@@ -67,7 +67,7 @@ The pipeline can optionally rescale and offset the input tensor.ç
 
 ## Quick Start
 
-Once the project is build, you can run the basic `segmentator_node` via:
+Once the project is built, you can run the basic `segmentator_node` via:
 ```bash
 ros2 launch semantic_inference_ros semantic_inference.launch.yaml
 ```

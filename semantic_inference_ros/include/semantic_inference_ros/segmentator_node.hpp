@@ -8,6 +8,7 @@
 #include "semantic_inference/segmenter.h"
 #include "semantic_inference/image_rotator.h"
 #include "semantic_inference/image_recolor.h"
+#include "semantic_inference/logging.h"
 
 #include "semantic_inference_msgs/msg/labels.hpp"
 
@@ -18,6 +19,7 @@
 #include <config_utilities/parsing/commandline.h>
 #include <config_utilities/parsing/yaml.h>
 #include <config_utilities/types/path.h>
+#include <config_utilities/printing.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include <image_transport/image_transport.hpp>
@@ -40,12 +42,11 @@ class SegmentatorNode : public rclcpp::Node,
             ImageRotator::Config image_rotator;
             ImageRecolor::Config recolor;
             bool show_config = true;
-            bool show_output_config = false;
             bool publish_color = true;
             bool publish_overlay = true;
             bool publish_labels = true;
             double overlay_alpha = 0.4;
-        } const config;
+        } config;
 
         SegmentatorNode(const rclcpp::NodeOptions& options);
         void init();
@@ -56,7 +57,6 @@ class SegmentatorNode : public rclcpp::Node,
         
     private:
 
-        std::shared_ptr<image_transport::ImageTransport> it_;
         image_transport::Publisher segmented_pub_;
         image_transport::Publisher color_pub_;
         image_transport::Publisher overlay_pub_;

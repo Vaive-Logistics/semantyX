@@ -7,45 +7,64 @@
 
 namespace semantic_inference_ros {
 
+void declare_config(SegmentatorNode::Config& config) {
+  using namespace config;
+  name("SegmentatorNode::Config");
+  field(config.segmenter, "segmenter");
+  field(config.image_rotator, "image_rotator");
+  field(config.recolor, "recolor");
+  field(config.show_config, "show_config");
+  field(config.publish_color, "publish_color");
+  field(config.publish_overlay, "publish_overlay");
+  field(config.publish_labels, "publish_labels");
+  field(config.overlay_alpha, "overlay_alpha");
+}
+
 SegmentatorNode::SegmentatorNode(const rclcpp::NodeOptions& options)
-            : Node("segmentator_node"),
+            : Node("segmentator_node", options),
                 config(config::fromCLI<Config>(options.arguments())),
                 image_rotator_(config.image_rotator),
                 image_recolor_(config.recolor)
 {
     config::checkValid(config);
 
-    try {
-        using semantic_inference::Segmenter;
-        segmenter_ = std::make_unique<Segmenter>(config.segmenter);
-    } catch (const std::exception& e) {
-        RCLCPP_ERROR(this->get_logger(), "SEGMENTATOR_NODE:: Segmenter constructor exception: %s", e.what());
-        throw e;
-    }
+    if (config.show_config)
+        std::cout << config::toString(config) << std::endl;
+
+    std::cout << "SegmentatorNode::SegmentatorNode() config checked\n";
 }
 
 SegmentatorNode::~SegmentatorNode() = default;
 
 void SegmentatorNode::init()
 {
-    it_ = std::make_shared<image_transport::ImageTransport>(rclcpp::Node::shared_from_this());
+    try {
+        segmenter_ = std::make_unique<semantic_inference::Segmenter>(config.segmenter);
+    } catch (const std::exception& e) {
+        RCLCPP_ERROR(this->get_logger(), "SEGMENTATOR_NODE:: Segmenter constructor exception: %s", e.what());
+        throw e;
+    }
 
     if (config.publish_labels) {
         labels_pub_ = this->create_publisher<semantic_inference_msgs::msg::Labels>("semantic/labels", 1);
     }
 
     if (config.publish_color) {
-        color_pub_ = it_->advertise("semantic_color/image_raw", 1);
+        color_pub_ = image_transport::create_publisher(this, "semantic_color/image_raw");
+        
     }
 
     if (config.publish_overlay) {
-        overlay_pub_ = it_->advertise("semantic_overlay/image_raw", 1);
+        overlay_pub_ = image_transport::create_publisher(this, "semantic_overlay/image_raw");
     }
 
-    segmented_pub_ = it_->advertise("semantic/image_raw", 1);
+    segmented_pub_ = image_transport::create_publisher(this, "semantic/image_raw");
 
-    sub_ = it_->subscribe("color/image_raw", 1,
-        std::bind(&SegmentatorNode::imageCallback, this, std::placeholders::_1));
+    sub_ = image_transport::create_subscription(this,
+                                                "color/image_raw",
+                                                std::bind(&SegmentatorNode::imageCallback, this, std::placeholders::_1),
+                                                "raw"  // transport hint
+                                                );
 }
 
 void SegmentatorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg)
@@ -200,29 +219,34 @@ semantic_inference_msgs::msg::Labels SegmentatorNode::extractLabels()
     return msg;
 }
 
-void declare_config(SegmentatorNode::Config& config) {
-  using namespace config;
-  name("SegmentatorNode::Config");
-  field(config.segmenter, "segmenter");
-  field(config.image_rotator, "image_rotator");
-  field(config.recolor, "recolor");
-  field(config.show_config, "show_config");
-  field(config.show_output_config, "show_output_config");
-  field(config.publish_color, "publish_color");
-  field(config.publish_overlay, "publish_overlay");
-  field(config.publish_labels, "publish_labels");
-  field(config.overlay_alpha, "overlay_alpha");
-}
-
 } // semantic_inference_ros
 
 int main(int argc, char * argv[])
 {
+
+    std::cout << "SegmentatorNode starting...\n";
+
     rclcpp::init(argc, argv);
 
+    // semantic_inference_ros::SegmentatorNode::Config my_config = config::fromCLI<
+    //                                                                 semantic_inference_ros::
+    //                                                                     SegmentatorNode::Config>(argc, argv);
+
+    // std::cout << "SegmentatorNode config loaded\n";
+
+    // std::cout << config::toString(my_config) << std::endl;
+
+    std::vector<std::string> args(argv + 1, argv + argc);
     rclcpp::NodeOptions options;
+    options.arguments(args);
+
     auto seg = std::make_shared<semantic_inference_ros::SegmentatorNode>(options);
-    seg->init(); // safe to call shared_from_this()
+
+    std::cout << "SegementatorNode constructed\n";
+
+    seg->init(); 
+
+    std::cout << "SegementatorNode initialized\n";
 
     rclcpp::spin(seg);
     return 0;
