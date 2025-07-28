@@ -46,6 +46,8 @@ using Label = int16_t;
 struct GroupInfo {
   std::string name;
   std::vector<Label> labels;
+  std::string source;
+  std::vector<float> rgb;
 };
 
 class ImageRecolor {
@@ -73,9 +75,11 @@ class ImageRecolor {
 
   const std::array<uint8_t, 3>& getColor(Label label) const;
 
+  std::map<Label, std::string> getNameRemap();
+
   const std::array<uint8_t, 3> default_color;
-  const std::map<Label, Label> label_remapping;
-  const std::map<Label, std::array<uint8_t, 3>> color_map;
+  std::map<Label, Label> label_remapping;
+  std::map<Label, std::array<uint8_t, 3>> color_map;
 
  protected:
   void fillColor(Label class_id, uint8_t* pixel, size_t pixel_size = 3) const;
@@ -84,6 +88,9 @@ class ImageRecolor {
 
  private:
   mutable std::set<Label> seen_unknown_labels_;
+
+  std::map<Label, std::string> name_map_;
+
 };
 
 void declare_config(ImageRecolor::Config& config);
