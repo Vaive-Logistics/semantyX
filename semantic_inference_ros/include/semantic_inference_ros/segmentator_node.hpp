@@ -33,8 +33,8 @@ using semantic_inference::Segmenter;
 using semantic_inference::ImageRotator;
 using semantic_inference::ImageRecolor;
 
-class SegmentatorNode : public rclcpp::Node,
-                        public std::enable_shared_from_this<SegmentatorNode>
+class SegmentatorNode : public rclcpp::Node
+                        // public std::enable_shared_from_this<SegmentatorNode>
 {
     public:
         struct Config {

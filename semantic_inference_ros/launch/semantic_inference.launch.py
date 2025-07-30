@@ -1,15 +1,26 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, Shutdown
+from launch.actions import DeclareLaunchArgument, Shutdown, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, TextSubstitution
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
 
+def print_args(context, *args, **kwargs):
+    print("------ LOADED RUNTIME ARGS: ------")
+    print("     - model_name:", LaunchConfiguration('model_name').perform(context))
+    print("     - model_config:", LaunchConfiguration('model_config').perform(context))
+    print("     - labelspace_name:", LaunchConfiguration('labelspace_name').perform(context))
+    print("     - colormap_path:", LaunchConfiguration('colormap_path').perform(context))
+    print("     - compressed_rgb:", LaunchConfiguration('compressed_rgb').perform(context))
+    print("----------------------------------")
+    return []
+
 def generate_launch_description():
     pkg_share = get_package_share_directory('semantic_inference_ros')
 
     args = [
+        DeclareLaunchArgument('node_name', default_value='semantic_inference_front'),
         DeclareLaunchArgument('model_name', default_value='ade20k-efficientvit_seg_l2'),
         DeclareLaunchArgument(
             'model_config',
@@ -20,15 +31,12 @@ def generate_launch_description():
             ],
             description='Model-specific configuration file'
         ),
-        DeclareLaunchArgument('force_rebuild', default_value='false'),
-        DeclareLaunchArgument('show_config', default_value='true'),
-        DeclareLaunchArgument('rotation_type', default_value='none'),
-        DeclareLaunchArgument('labelspace_name', default_value='ade20k_mp3d'),
+        DeclareLaunchArgument('labelspace_name', default_value='ade20k_custom'),
         DeclareLaunchArgument(
             'colormap_path',
             default_value=os.path.join(pkg_share, 'config', 'distinct_150_colors.csv')
         ),
-        DeclareLaunchArgument('compressed_rgb', default_value='false'),
+        DeclareLaunchArgument('compressed_rgb', default_value='false')
     ]
 
     decompress_node = Node(
@@ -46,50 +54,40 @@ def generate_launch_description():
         ]
     )
 
-    label_grouping_yaml = [PathJoinSubstitution([
-        TextSubstitution(text=pkg_share),
-        'config',
-        'label_groupings',
-            LaunchConfiguration('labelspace_name')]),
-            TextSubstitution(text='.yaml@output/recolor')
+    label_grouping_yaml = [
+        PathJoinSubstitution([
+            TextSubstitution(text=pkg_share),
+            'config',
+            'label_groupings',
+            LaunchConfiguration('labelspace_name')
+        ]),
+        TextSubstitution(text='.yaml@recolor')
     ]
 
     segmentator_node = Node(
         package='semantic_inference_ros',
         executable='segmentator_node',
-        name='semantic_inference',
+        name=LaunchConfiguration('node_name'),
         on_exit=Shutdown(),
         output="screen",
         arguments=[
             '--config-utilities-file', LaunchConfiguration('model_config'),
             '--config-utilities-file', label_grouping_yaml,
-            '--config-utilities-yaml', [
-                TextSubstitution(text='segmenter: {model: {model_file: '),
-                LaunchConfiguration('model_name'),
-                TextSubstitution(text='.onnx, force_rebuild: '),
-                LaunchConfiguration('force_rebuild'),
-                TextSubstitution(text='}}')
-            ],
+            
             '--config-utilities-yaml', [
                 TextSubstitution(text='recolor: {colormap_path: '),
                 LaunchConfiguration('colormap_path'),
                 TextSubstitution(text='}')
             ],
-            '--config-utilities-yaml', [
-                TextSubstitution(text='image_rotator: {rotation: '),
-                LaunchConfiguration('rotation_type'),
-                TextSubstitution(text='}')
-            ],
-            '--config-utilities-yaml', [
-                TextSubstitution(text='show_config: '),
-                LaunchConfiguration('show_config'),
-                TextSubstitution(text='')
-            ]
+        ],
+        remappings=[
+            ('color/image_raw', '/ona2/sensors/flir_camera_front/image_raw')   # <-- remap input topic here
         ]
     )
-
+            
 
     return LaunchDescription(args + [
+        OpaqueFunction(function=print_args),
         decompress_node,
         segmentator_node
     ])

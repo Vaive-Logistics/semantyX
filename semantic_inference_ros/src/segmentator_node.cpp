@@ -224,9 +224,9 @@ semantic_inference_msgs::msg::Labels SegmentatorNode::extractLabels()
 int main(int argc, char * argv[])
 {
 
-    std::cout << "SegmentatorNode starting...\n";
-
     rclcpp::init(argc, argv);
+
+    std::cout << "SegmentatorNode starting...\n";
 
     // semantic_inference_ros::SegmentatorNode::Config my_config = config::fromCLI<
     //                                                                 semantic_inference_ros::

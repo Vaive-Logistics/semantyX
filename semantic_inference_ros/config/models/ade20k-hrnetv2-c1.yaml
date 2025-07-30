@@ -1,6 +1,29 @@
 ---
 segmenter:
+  mask_predictions_with_depth: true 
   model:
+    model_file:             ade20k-hrnetv2-c1.onnx
+    log_severity:           INFO 
+    force_rebuild:          false 
     color:
-      mean: [0.485, 0.456, 0.406]
-      stddev: [0.229, 0.224, 0.225]
+        mean:                [0.485, 0.456, 0.406]
+        stddev:              [0.229, 0.224, 0.225] 
+        map_to_unit_range:   true
+        normalize:           true
+        rgb_order:           true
+    depth:
+        mean:                0.213
+        stddev:              0.285
+        normalize:           false
+  depth_mask:
+    min_depth: 0.1   
+    max_depth: 10.0      
+
+image_rotator:
+  rotation: none    # [none, ROTATE_90_CLOCKWISE, ROTATE_180, ROTATE_90_COUNTERCLOCKWISE]        
+
+show_config:       true
+publish_color:     true
+publish_overlay:   true
+publish_labels:    true
+overlay_alpha:     0.4
