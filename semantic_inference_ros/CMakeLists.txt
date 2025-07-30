@@ -9,6 +9,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+set(CMAKE_BUILD_TYPE "Release")
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -27,11 +29,6 @@ add_executable(segmentator_node
               src/segmentator_node.cpp
               )
 ament_target_dependencies(segmentator_node rclcpp sensor_msgs image_transport cv_bridge semantic_inference_msgs semantic_inference)
-# target_link_libraries(
-#   segmentator_node
-#   PUBLIC rclcpp::rclcpp semantic_inference::semantic_inference
-#   PRIVATE cv_bridge::cv_bridge
-# )
 
 # Binaries
 install( TARGETS segmentator_node
