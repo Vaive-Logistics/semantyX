@@ -46,19 +46,19 @@ void SegmentatorNode::init()
     }
 
     if (config.publish_labels) {
-        labels_pub_ = this->create_publisher<semantic_inference_msgs::msg::Labels>("semantic/labels", 1);
+        labels_pub_ = this->create_publisher<semantic_inference_msgs::msg::Labels>("~/semantic/labels", 1);
     }
 
     if (config.publish_color) {
-        color_pub_ = image_transport::create_publisher(this, "semantic_color/image_raw");
+        color_pub_ = image_transport::create_publisher(this, "~/semantic_color/image_raw");
         
     }
 
     if (config.publish_overlay) {
-        overlay_pub_ = image_transport::create_publisher(this, "semantic_overlay/image_raw");
+        overlay_pub_ = image_transport::create_publisher(this, "~/semantic_overlay/image_raw");
     }
 
-    segmented_pub_ = image_transport::create_publisher(this, "semantic/image_raw");
+    segmented_pub_ = image_transport::create_publisher(this, "~/semantic/image_raw");
 
     sub_ = image_transport::create_subscription(this,
                                                 "color/image_raw",

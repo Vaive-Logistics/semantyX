@@ -31,7 +31,13 @@ def generate_launch_description():
             ],
             description='Model-specific configuration file'
         ),
-        DeclareLaunchArgument('labelspace_name', default_value='ade20k_custom'),
+
+        # Default value custom file with 3 words : static + dynamic + traversable)
+        # DeclareLaunchArgument('labelspace_name', default_value='ade20k_custom'),
+
+        # Custom file with 4 words : static + dynamic + traversable + people + )
+        DeclareLaunchArgument('labelspace_name', default_value='ade20k_custom_pedestrian'),
+
         DeclareLaunchArgument(
             'colormap_path',
             default_value=os.path.join(pkg_share, 'config', 'distinct_150_colors.csv')

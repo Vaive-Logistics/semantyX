@@ -1,6 +1,6 @@
 ---
 segmenter:
-  mask_predictions_with_depth: true 
+  mask_predictions_with_depth: false 
   model:
     model_file:             ade20k-hrnetv2-c1.onnx
     log_severity:           INFO 

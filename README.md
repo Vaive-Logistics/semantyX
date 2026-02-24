@@ -37,16 +37,22 @@ sudo apt install libnvinfer-dev libnvonnxparsers-dev libnvinfer-plugin-dev cuda-
 
 ### Building
 
-Once CUDA and TensorRT dependencies are installed:
+Once CUDA and TensorRT dependencies are installed clone both `semantyX` and `config_utilities`:
 ```bash
 cd /path/to/your/workspace/src/
 git clone https://github.com/MIT-SPARK/config_utilities.git
 git clone https://github.com/Vaive-Logistics/semantyX.git
-cd ..
+cd .. # go back to parent ws dir
+```
+
+Finally, build all packages:
+```bash
+colcon build --packages-select semantic_inference semantic_inference_msgs config_utilities
+source install/setup.bash # add semantic_inference lib to path
 colcon build
 ```
 
-You can run the following to validate that `semantic_inference` built correctly:
+_You can run the following to validate that `semantic_inference` is built correctly:_
 ```shell
 colcon test --packages-select semantic_inference
 ```
@@ -69,5 +75,12 @@ The pipeline can optionally rescale and offset the input tensor.ç
 
 Once the project is built, you can run the basic `segmentator_node` via:
 ```bash
-ros2 launch semantic_inference_ros semantic_inference.launch.yaml
+ros2 launch semantic_inference_ros semantic_inference.launch.py
+```
+
+You can change the input camera topic for yours modifying line 84:
+```py
+remappings=[
+            ('color/image_raw', '/ona2/sensors/flir_camera_front/image_raw')   # <-- remap input topic here
+        ] 
 ```
