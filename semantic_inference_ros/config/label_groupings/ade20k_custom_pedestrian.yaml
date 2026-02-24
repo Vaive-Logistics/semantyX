@@ -19,6 +19,4 @@ groups:
       92, 12, 141, 14, 30, 47, 95], source: raw_int, rgb: [0, 0, 255]}
     #- {name: People, labels: [13], source: raw_int, rgb: [221, 39, 245]}
     - {name: People, labels: [13], source: raw_int, rgb: [255, 238, 17]} # pedestrians are yellow
-
-    - {name: People, labels: [13], source: raw_int, rgb: [221, 39, 245]}
 default_color: [0.9677975592919913, 0.44127456009157356, 0.5358103155058701]
