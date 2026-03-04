@@ -87,7 +87,7 @@ def generate_launch_description():
             ],
         ],
         remappings=[
-            ('color/image_raw', '/ona2/sensors/flir_camera_front/image_raw')   # <-- remap input topic here
+            ('color/image_raw', '/ona2/sensors/flir_camera_back/image_raw')   # <-- remap input topic here
         ]
     )
             
