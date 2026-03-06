@@ -20,7 +20,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('semantic_inference_ros')
 
     args = [
-        DeclareLaunchArgument('node_name', default_value='semantic_inference_front'),
+        DeclareLaunchArgument('node_name', default_value='semantic_inference_back'),
         DeclareLaunchArgument('model_name', default_value='ade20k-efficientvit_seg_l2'),
         DeclareLaunchArgument(
             'model_config',
