@@ -58,7 +58,9 @@ void SegmentatorNode::init()
         overlay_pub_ = image_transport::create_publisher(this, "~/semantic_overlay/image_raw");
     }
 
-    segmented_pub_ = image_transport::create_publisher(this, "~/semantic/image_raw");
+    segmented_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
+        "~/semantic/image_raw",
+        rclcpp::SensorDataQoS().keep_last(1).best_effort());
 
     sub_ = image_transport::create_subscription(this,
                                                 "color/image_raw",
@@ -149,7 +151,11 @@ void SegmentatorNode::publish(const std_msgs::msg::Header& header,
 
     label_image_.header = header;
     image_recolor_.relabelImage(labels, label_image_.image);
-    segmented_pub_.publish(label_image_.toImageMsg());
+    label_image_u8_.header = header;
+    label_image_u8_.encoding = "mono8";
+    label_image_.image.convertTo(label_image_u8_.image, CV_8UC1);
+    label_image_u8_.image.setTo(255, label_image_.image == -1);
+    segmented_pub_->publish(*label_image_u8_.toImageMsg());
 
     if (!config.publish_color && !config.publish_overlay) {
         return;

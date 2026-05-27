@@ -57,7 +57,7 @@ class SegmentatorNode : public rclcpp::Node
         
     private:
 
-        image_transport::Publisher segmented_pub_;
+        rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr segmented_pub_;
         image_transport::Publisher color_pub_;
         image_transport::Publisher overlay_pub_;
         image_transport::Subscriber sub_;
@@ -66,6 +66,7 @@ class SegmentatorNode : public rclcpp::Node
         ImageRecolor image_recolor_;
 
         cv_bridge::CvImage label_image_;
+        cv_bridge::CvImage label_image_u8_;
         cv_bridge::CvImage color_image_;
         cv_bridge::CvImage overlay_image_;
         
