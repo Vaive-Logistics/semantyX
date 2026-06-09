@@ -91,6 +91,12 @@ class ImageRecolor {
 
   std::map<Label, std::string> name_map_;
 
+  // LUT for relabelImage — covers the full int16_t range [-32768, 32767].
+  // Indexed as: lut[label + kLutOffset]. Built once in the constructor.
+  static constexpr int kLutOffset = 32768;
+  std::vector<Label> relabel_lut_;
+  void buildRelabelLut();
+
 };
 
 void declare_config(ImageRecolor::Config& config);
