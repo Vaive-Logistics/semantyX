@@ -23,7 +23,7 @@ image_rotator:
   rotation: none    # [none, ROTATE_90_CLOCKWISE, ROTATE_180, ROTATE_90_COUNTERCLOCKWISE]    
 
 show_config:       true
-publish_color:     true
-publish_overlay:   true
-publish_labels:    true
+publish_color:     false
+publish_overlay:   false
+publish_labels:    false
 overlay_alpha:     0.4
