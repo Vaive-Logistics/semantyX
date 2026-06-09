@@ -101,6 +101,10 @@ class Model {
   ImageMemoryPair color_;
   ImageMemoryPair depth_;
   std::unique_ptr<int32_t, CudaMemoryManager::Delete> label_memory_;
+
+  // [OPTIMIZATION] Cached allocation size for label output buffer.
+  // cudaMalloc is expensive; skip reallocation when size hasn't changed.
+  mutable size_t label_memory_size_ = 0;
 };
 
 }  // namespace semantic_inference

@@ -69,6 +69,14 @@ void declare_config(ModelConfig& config) {
   field<Path>(config.model_file, "model_file");
   field(config.log_severity, "log_severity");
   field(config.force_rebuild, "force_rebuild");
+  // [OPTIMIZATION] precision / accelerator
+  field(config.use_fp16, "use_fp16");
+  field(config.use_dla, "use_dla");
+  field(config.dla_core, "dla_core");
+  // optimization profile — MUST match actual inference resolution
+  field(config.min_optimization_size, "min_optimization_size");
+  field(config.max_optimization_size, "max_optimization_size");
+  field(config.target_optimization_size, "target_optimization_size");
   field(config.color, "color");
   field(config.depth, "depth");
   // checks

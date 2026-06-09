@@ -43,6 +43,18 @@ struct ModelConfig {
   std::filesystem::path model_file;
   std::string log_severity = "INFO";
   bool force_rebuild = false;
+
+  // [OPTIMIZATION] TensorRT precision and accelerator options.
+  // use_fp16: enables FP16 kernels — up to 2x faster on Jetson GPU.
+  // use_dla:  routes layers to the Jetson DLA engine (with GPU fallback).
+  //           Requires force_rebuild = true on first run after changing.
+  // dla_core: DLA core index (0 or 1 on Orin).
+  bool use_fp16 = true;
+  bool use_dla = false;
+  int dla_core = 0;
+
+  // [OPTIMIZATION] Set target_optimization_size to match the actual input
+  // resolution (e.g. 640 for 640x480). Mismatches degrade TRT kernel selection.
   size_t min_optimization_size = 100;
   size_t max_optimization_size = 2000;
   size_t target_optimization_size = 500;

@@ -1,13 +1,25 @@
----
 segmenter:
-  mask_predictions_with_depth: false 
+  mask_predictions_with_depth: false
   model:
     model_file:             ade20k-mobilenetv2dilated-c1_deepsup.onnx
-    log_severity:           INFO 
-    force_rebuild:          false 
+    log_severity:           INFO
+    force_rebuild:          false
+
+    # [OPTIMIZATION] Enable FP16 for ~2x inference speedup on Jetson GPU.
+    # Set force_rebuild: true once after changing these to regenerate the .trt engine.
+    use_fp16:               true
+    use_dla:                false   # set true to use Jetson DLA (requires force_rebuild)
+    dla_core:               0
+
+    # [OPTIMIZATION] Set target_optimization_size to your actual input side length
+    # (e.g. 640 for 640x480). Mismatches degrade TRT kernel selection.
+    min_optimization_size:    100
+    target_optimization_size: 500   # <-- CHANGE THIS to match your camera resolution
+    max_optimization_size:    2000
+
     color:
         mean:                [0.485, 0.456, 0.406]
-        stddev:              [0.229, 0.224, 0.225] 
+        stddev:              [0.229, 0.224, 0.225]
         map_to_unit_range:   true
         normalize:           true
         rgb_order:           true
@@ -16,14 +28,14 @@ segmenter:
         stddev:              0.285
         normalize:           false
   depth_mask:
-    min_depth: 0.1   
-    max_depth: 10.0      
+    min_depth: 0.1
+    max_depth: 10.0
 
 image_rotator:
-  rotation: none    # [none, ROTATE_90_CLOCKWISE, ROTATE_180, ROTATE_90_COUNTERCLOCKWISE]     
+  rotation: none    # [none, ROTATE_90_CLOCKWISE, ROTATE_180, ROTATE_90_COUNTERCLOCKWISE]
 
 show_config:       true
 publish_color:     true
 publish_overlay:   true
 publish_labels:    true
-overlay_alpha:     0.4   
+overlay_alpha:     0.4

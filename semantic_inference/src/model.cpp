@@ -68,8 +68,6 @@ bool areDimsCHWOrder(const nvinfer1::Dims& dims) {
 Shape getShapeFromDims(const nvinfer1::Dims& dims) {
   const auto info = getDimInfo(dims);
   if (dims.nbDims < 2) {
-    // TODO(nathan) fix
-    // SLOG(ERROR) << "invalid tensor: " << *this;
     throw std::runtime_error("unsupported layout!");
   }
 
@@ -263,6 +261,7 @@ Model::~Model() {
 }
 
 void Model::initOutput(const cv::Mat& color) {
+  // Always let TRT propagate shapes (needed for dynamic-input models).
   if (context_->inferShapes(0, nullptr)) {
     SLOG(FATAL) << "Invalid shapes!";
     throw std::runtime_error("could not infer output shape");
@@ -276,9 +275,17 @@ void Model::initOutput(const cv::Mat& color) {
   }
 
   const auto shape = info.shape().updateFrom(color);
-  auto size = sizeof(int32_t) * shape.width * shape.height * shape.channels.value_or(1);
-  label_memory_.reset(reinterpret_cast<int32_t*>(CudaMemoryManager::alloc(size)));
-  context_->setTensorAddress(tensor_name, label_memory_.get());
+  const auto required_size =
+      sizeof(int32_t) * shape.width * shape.height * shape.channels.value_or(1);
+
+  // [OPTIMIZATION] Skip cudaMalloc when output size is unchanged (common case
+  // for fixed-resolution inputs). cudaMalloc is synchronous and expensive.
+  if (required_size != label_memory_size_) {
+    SLOG(DEBUG) << "Reallocating label memory: " << required_size << " bytes";
+    label_memory_.reset(reinterpret_cast<int32_t*>(CudaMemoryManager::alloc(required_size)));
+    context_->setTensorAddress(tensor_name, label_memory_.get());
+    label_memory_size_ = required_size;
+  }
 }
 
 bool Model::setInputs(const cv::Mat& color, const cv::Mat& depth) {
@@ -335,7 +342,7 @@ bool Model::setInputs(const cv::Mat& color, const cv::Mat& depth) {
                           cudaMemcpyHostToDevice,
                           stream_);
   if (error != cudaSuccess) {
-    SLOG(ERROR) << "Copying color input failed: " << cudaGetErrorString(error);
+    SLOG(ERROR) << "Copying depth input failed: " << cudaGetErrorString(error);
     return false;
   }
 
@@ -343,7 +350,9 @@ bool Model::setInputs(const cv::Mat& color, const cv::Mat& depth) {
 }
 
 SegmentationResult Model::infer() const {
-  cudaStreamSynchronize(stream_);
+  // [OPTIMIZATION] The cudaStreamSynchronize that was here before enqueueV3
+  // was unnecessary: the H2D memcpyAsync and enqueueV3 are on the same stream
+  // and execute in order. Removing it eliminates a host-blocking stall.
   bool status = context_->enqueueV3(stream_);
   if (!status) {
     SLOG(ERROR) << "initializing inference failed!";

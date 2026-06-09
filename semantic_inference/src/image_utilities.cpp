@@ -33,6 +33,8 @@
 
 #include <config_utilities/config.h>
 
+#include <cstring>
+
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -54,37 +56,70 @@ void ColorConverter::fillImage(const cv::Mat& input, cv::Mat& output) const {
     return;
   }
 
+  // [OPTIMIZATION] Replaced pixel-by-pixel loop with vectorized OpenCV ops.
+  // Original code used nested loops with .at<float>() (incl. bounds checks),
+  // iterating ~W*H*3 times. New code uses cv::split + convertTo + arithmetic
+  // which maps to SIMD-accelerated routines, dramatically faster on ARM/Jetson.
+
   const bool is_chw_order = output.size[0] == 3;
   const int rows = is_chw_order ? output.size[1] : output.size[0];
   const int cols = is_chw_order ? output.size[2] : output.size[1];
 
+  // Resize if needed (same logic as before)
   cv::Mat img;
-  if (input.cols == output.cols && input.rows == output.rows) {
+  if (input.cols == cols && input.rows == rows) {
     img = input;
   } else {
     cv::resize(input, img, cv::Size(cols, rows));
   }
 
-  std::array<int, 3> input_addr;
-  if (config.rgb_order) {
-    input_addr = {2, 1, 0};
-  } else {
-    input_addr = {0, 1, 2};
-  }
+  // Split into per-channel planes. OpenCV delivers BGR order.
+  std::vector<cv::Mat> channels(3);
+  cv::split(img, channels);  // channels[0]=B, channels[1]=G, channels[2]=R
 
-  for (int row = 0; row < img.rows; ++row) {
-    for (int col = 0; col < img.cols; ++col) {
-      const uint8_t* pixel = img.ptr<uint8_t>(row, col);
-      if (is_chw_order) {
-        output.at<float>(0, row, col) = convert(pixel[input_addr[0]], 0);
-        output.at<float>(1, row, col) = convert(pixel[input_addr[1]], 1);
-        output.at<float>(2, row, col) = convert(pixel[input_addr[2]], 2);
-      } else {
-        output.at<float>(row, col, 0) = convert(pixel[input_addr[0]], 0);
-        output.at<float>(row, col, 1) = convert(pixel[input_addr[1]], 1);
-        output.at<float>(row, col, 2) = convert(pixel[input_addr[2]], 2);
+  // Reorder channels to match target color space
+  if (config.rgb_order) {
+    std::swap(channels[0], channels[2]);  // BGR → RGB
+  }
+  // channels[c] is now the c-th channel in the target order
+
+  const float inv255 = 1.0f / 255.0f;
+
+  if (is_chw_order) {
+    // CHW layout: output is a 3D mat [3, H, W] — each channel is a contiguous
+    // HxW block. We wrap each block as a 2D mat and write directly into it.
+    for (int c = 0; c < 3; ++c) {
+      cv::Mat dst(rows, cols, CV_32F, output.ptr<float>(c));
+      channels[c].convertTo(dst, CV_32F);
+      if (config.map_to_unit_range) {
+        dst *= inv255;
+      }
+      if (config.normalize) {
+        dst -= config.mean[c];
+        dst *= (1.0f / config.stddev[c]);
       }
     }
+  } else {
+    // HWC layout: output is a 3D mat [H, W, 3] — channels are interleaved.
+    // Process each channel independently, then merge into a temporary 2D
+    // 3-channel mat (identical memory layout to [H, W, 3]) and memcpy out.
+    std::vector<cv::Mat> float_channels(3);
+    for (int c = 0; c < 3; ++c) {
+      channels[c].convertTo(float_channels[c], CV_32F);
+      if (config.map_to_unit_range) {
+        float_channels[c] *= inv255;
+      }
+      if (config.normalize) {
+        float_channels[c] -= config.mean[c];
+        float_channels[c] *= (1.0f / config.stddev[c]);
+      }
+    }
+    cv::Mat merged(rows, cols, CV_32FC3);
+    cv::merge(float_channels, merged);
+    // A 3D HWC mat [H,W,3] of CV_32FC1 and a 2D mat [H,W] of CV_32FC3 share
+    // identical memory layout — plain memcpy is safe here.
+    std::memcpy(output.data, merged.data,
+                static_cast<size_t>(rows) * cols * 3 * sizeof(float));
   }
 }
 
@@ -117,6 +152,10 @@ void DepthConverter::fillImage(const cv::Mat& input, cv::Mat& output) const {
     return;
   }
 
+  // [OPTIMIZATION] Replaced pixel-by-pixel loop with vectorized OpenCV ops.
+  // Original iterated every pixel with .at<float>(); new code uses convertTo
+  // and element-wise arithmetic backed by SIMD on ARM Cortex-A / Jetson CPU.
+
   const bool size_ok = input.cols == output.cols && input.rows == output.rows;
   cv::Mat img;
   if (size_ok) {
@@ -125,10 +164,22 @@ void DepthConverter::fillImage(const cv::Mat& input, cv::Mat& output) const {
     cv::resize(input, img, cv::Size(output.cols, output.rows), 0, 0, cv::INTER_NEAREST);
   }
 
-  for (int row = 0; row < img.rows; ++row) {
-    for (int col = 0; col < img.cols; ++col) {
-      output.at<float>(row, col) = convert(img.at<float>(row, col));
-    }
+  // Ensure float input
+  cv::Mat float_img;
+  if (img.type() == CV_32F) {
+    float_img = img;
+  } else {
+    img.convertTo(float_img, CV_32F);
+  }
+
+  if (!config.normalize) {
+    float_img.copyTo(output);
+  } else {
+    // normalize: (x - mean) / stddev, then clamp negative values to 0.
+    // Original loop did this per-pixel; cv::subtract + multiply + max are SIMD.
+    cv::subtract(float_img, config.mean, output);
+    output *= (1.0f / config.stddev);
+    cv::max(output, 0.0f, output);
   }
 }
 

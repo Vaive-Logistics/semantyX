@@ -310,6 +310,39 @@ EnginePtr buildEngineFromOnnx(const ModelConfig& model_config, IRuntime& runtime
   }
 
   std::unique_ptr<nvinfer1::IBuilderConfig> config(builder->createBuilderConfig());
+
+  // [OPTIMIZATION] Enable FP16 precision if supported on this platform.
+  // On Jetson Orin the GPU has native FP16 support, roughly halving inference time.
+  if (model_config.use_fp16) {
+    if (builder->platformHasFastFp16()) {
+      SLOG(INFO) << "FP16 supported — enabling FP16 precision";
+      config->setFlag(nvinfer1::BuilderFlag::kFP16);
+    } else {
+      SLOG(WARNING) << "use_fp16=true but platform lacks fast FP16 — ignoring";
+    }
+  }
+
+  // [OPTIMIZATION] Route layers to the Jetson DLA hardware engine when available.
+  // kGPU_FALLBACK ensures unsupported layers fall back to GPU gracefully.
+  if (model_config.use_dla) {
+    const int num_dla = builder->getNbDLACores();
+    if (num_dla > model_config.dla_core) {
+      SLOG(INFO) << "Enabling DLA core " << model_config.dla_core
+                 << " (of " << num_dla << " available)";
+      config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
+      config->setDLACore(model_config.dla_core);
+      config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);
+      // DLA requires FP16 or INT8 — force FP16 if not already set
+      if (!model_config.use_fp16) {
+        SLOG(WARNING) << "DLA requires FP16; enabling FP16 automatically";
+        config->setFlag(nvinfer1::BuilderFlag::kFP16);
+      }
+    } else {
+      SLOG(WARNING) << "use_dla=true but DLA core " << model_config.dla_core
+                    << " not available (found " << num_dla << " cores) — ignoring";
+    }
+  }
+
   auto* profile = builder->createOptimizationProfile();
   for (int i = 0; i < net->getNbInputs(); ++i) {
     const auto input_tensor = net->getInput(i);

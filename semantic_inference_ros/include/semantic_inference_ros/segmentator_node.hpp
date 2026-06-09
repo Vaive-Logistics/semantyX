@@ -24,7 +24,6 @@
 #include <rclcpp/rclcpp.hpp>
 #include <image_transport/image_transport.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/msg/compressed_image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 
@@ -59,7 +58,6 @@ class SegmentatorNode : public rclcpp::Node
     private:
 
         rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr segmented_pub_;
-        rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr segmented_compressed_pub_;
         image_transport::Publisher color_pub_;
         image_transport::Publisher overlay_pub_;
         image_transport::Subscriber sub_;
