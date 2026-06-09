@@ -61,6 +61,9 @@ void SegmentatorNode::init()
     segmented_pub_ = this->create_publisher<sensor_msgs::msg::Image>(
         "~/semantic/image_raw",
         rclcpp::SensorDataQoS().keep_last(1).best_effort());
+    segmented_compressed_pub_ = this->create_publisher<sensor_msgs::msg::CompressedImage>(
+        "~/semantic/image_raw/compressed",
+        rclcpp::SensorDataQoS().keep_last(1).best_effort());
 
     sub_ = image_transport::create_subscription(this,
                                                 "color/image_raw",
@@ -156,6 +159,11 @@ void SegmentatorNode::publish(const std_msgs::msg::Header& header,
     label_image_.image.convertTo(label_image_u8_.image, CV_8UC1);
     label_image_u8_.image.setTo(255, label_image_.image == -1);
     segmented_pub_->publish(*label_image_u8_.toImageMsg());
+    sensor_msgs::msg::CompressedImage compressed_msg;
+    compressed_msg.header = header;
+    compressed_msg.format = "mono8; png compressed";
+    cv::imencode(".png", label_image_u8_.image, compressed_msg.data);
+    segmented_compressed_pub_->publish(compressed_msg);
 
     if (!config.publish_color && !config.publish_overlay) {
         return;
